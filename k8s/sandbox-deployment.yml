@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandbox-deployment
+  labels:
+    name: sandbox-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandbox
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sandbox
+    spec:
+      containers:
+        - image: sandbox-image:latest
+          name: sandbox-container
+          imagePullPolicy: IfNotPresent
+
+          envFrom:
+            - configMapRef:
+                name: sandbox-config
+          ports:
+            - containerPort: 3000
+              name: main-sandbox
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "250Mi"
+            requests:
+              cpu: "250m"
+              memory: "125Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/sandbox/health
+              port: 3000
+            initialDelaySeconds: 90
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/sandbox/health
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 10

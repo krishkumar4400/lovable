@@ -1,0 +1,10 @@
+.env
+node_modules
+*.pdf
+*.txt
+
+node_modules
+.env
+.git
+.gitignore
+Dockerfile
