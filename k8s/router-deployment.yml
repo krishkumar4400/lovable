@@ -15,7 +15,7 @@ spec:
         app:  router
     spec:
       containers:
-      - image:  router:v1
+      - image:  router:v2
         name:  router-server
         imagePullPolicy: IfNotPresent
         resources:

@@ -22,17 +22,26 @@ app.get("/api/v1/status/readyz", (req, res) => {
   });
 });
 
+const proxies = {};
+
+function getProxy(sandboxId, targetUrl) {
+  if (!proxies[sandboxId]) {
+    proxies[sandboxId] = createProxyMiddleware({
+      target: targetUrl,
+      changeOrigin: true,
+      ws: true,
+    });
+  }
+  return proxies[sandboxId];
+}
+
 app.use((req, res, next) => {
   const hostHeader = req.headers.host;
   const sandboxId = hostHeader.split(".")[0];
   const targetUrl = `http://sandbox-service-${sandboxId}`;
   console.log(`Proxying request to: ${targetUrl}`);
 
-  return createProxyMiddleware({
-    target: targetUrl,
-    changeOrigin: true,
-    ws: true,
-  })(req, res, next);
+  return getProxy(sandboxId, targetUrl)(req, res, next);
 });
 
 export default app;
