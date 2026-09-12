@@ -19,7 +19,7 @@ export async function createPod(sandboxId) {
       initContainers: [
         {
           name: "init-container",
-          image: "template",
+          image: "template:latest",
           imagePullPolicy: "Always",
           command: ["sh", "-c", "cp -r /workspace/. /seed/"],
           volumeMounts: [

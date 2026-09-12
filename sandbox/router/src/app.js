@@ -25,25 +25,39 @@ app.get("/api/v1/status/readyz", (req, res) => {
 const proxies = {};
 const agentProxies = {};
 
-function getProxy(sandboxId, targetUrl) {
+export function getProxy(sandboxId, targetUrl) {
   if (!proxies[sandboxId]) {
     proxies[sandboxId] = createProxyMiddleware({
       target: targetUrl,
       changeOrigin: true,
       ws: true,
+
+      on: {
+        error: (err, req) => {
+          console.error(`[Preview Proxy Error] ${sandboxId}`, err.message);
+        },
+      },
     });
   }
+
   return proxies[sandboxId];
 }
 
-function getAgentProxy(sandboxId, targetUrl) {
+export function getAgentProxy(sandboxId, targetUrl) {
   if (!agentProxies[sandboxId]) {
     agentProxies[sandboxId] = createProxyMiddleware({
       target: targetUrl,
       changeOrigin: true,
       ws: true,
+
+      on: {
+        error: (err, req) => {
+          console.error(`[Agent Proxy Error] ${sandboxId}`, err.message);
+        },
+      },
     });
   }
+
   return agentProxies[sandboxId];
 }
 
