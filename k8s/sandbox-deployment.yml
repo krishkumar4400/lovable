@@ -23,7 +23,7 @@ spec:
       containers:
         - image: sandbox-image:v3
           name: sandbox-container
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
 
           envFrom:
             - configMapRef:
