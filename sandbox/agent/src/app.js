@@ -7,7 +7,7 @@ const app = express();
 
 // middlewares
 app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 const WORKDIR = "/workspace";
@@ -103,7 +103,7 @@ app.get("/read-files", async (req, res) => {
       try {
         const content = await fs.promises.readFile(filePath, "utf-8");
         return {
-          [filePath.replace(WORKDIR, '')]: content,
+          [filePath.replace(WORKDIR, "")]: content,
         };
       } catch (error) {
         return {
@@ -144,11 +144,12 @@ app.patch("/update-files", async (req, res) => {
       try {
         await fs.promises.writeFile(filePath, content, "utf-8");
         return {
-          [filePath]: "File updated successfully",
+          [filePath.replace(WORKDIR, "")]: "File updated successfully",
         };
       } catch (error) {
         return {
-          [filePath]: `Error updating file: ${error.message}`,
+          [filePath.replace(WORKDIR, "")]:
+            `Error updating file: ${error.message}`,
         };
       }
     }),
