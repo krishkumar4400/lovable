@@ -13,7 +13,8 @@ app.get("/api/v1/ai-orchestration/healthz", (req, res) => {
   return res.status(200).json({
     message: "AI Orchestration server is up and running",
     success: true,
-    status: "OK"
+    status: "OK",
+    env: "dev"
   });
 });
 

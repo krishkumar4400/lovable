@@ -11,6 +11,11 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       protocol: "ws"
+    },
+    watch: {
+      usePolling: true,
+      interval: 300,
+      ignored: ["node_modules"]
     }
   }
 });

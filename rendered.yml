@@ -1,0 +1,269 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: ai-deployment
+  name: ai-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-server
+  template:
+    metadata:
+      labels:
+        app: ai-server
+    spec:
+      containers:
+        - image: ai-orchestration-server:1d57c99
+          livenessProbe:
+            httpGet:
+              path: /api/v1/ai-orchestration/healthz
+              port: 3000
+            initialDelaySeconds: 90
+            timeoutSeconds: 10
+          name: ai-server
+          ports:
+            - containerPort: 3000
+              name: ai-server-port
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ai-orchestration/healthz
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500M
+            requests:
+              cpu: 250m
+              memory: 250M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+spec:
+  ports:
+    - name: ai-http
+      port: 80
+      targetPort: 3000
+  selector:
+    app: ai-server
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: router-server-deployment
+  name: router-server-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: router
+  template:
+    metadata:
+      labels:
+        app: router
+    spec:
+      containers:
+        - image: router:1d57c99
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status/healthz
+              port: 3000
+            initialDelaySeconds: 90
+            timeoutSeconds: 10
+          name: router-server
+          ports:
+            - containerPort: 3000
+              name: router-port
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status/readyz
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 5000m
+              memory: 500Mi
+            requests:
+              cpu: 250m
+              memory: 250Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: router
+  name: router-service
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+  selector:
+    app: router
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: sandbox-deployment
+  name: sandbox-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandbox-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: sandbox-api
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: sandbox-config
+          image: sandbox-server:1d57c99
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /api/v1/sandbox/health
+              port: 3000
+            initialDelaySeconds: 90
+            timeoutSeconds: 10
+          name: sandbox-container
+          ports:
+            - containerPort: 3000
+              name: main-sandbox
+          readinessProbe:
+            httpGet:
+              path: /api/v1/sandbox/health
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 250Mi
+            requests:
+              cpu: 250m
+              memory: 125Mi
+      serviceAccountName: resource-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandbox-service
+spec:
+  ports:
+    - name: main-sandbox-port
+      port: 80
+      targetPort: 3000
+  selector:
+    app: sandbox-api
+  type: ClusterIP
+---
+apiVersion: v1
+data:
+  PORT: "3000"
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: resource-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: resource-manager
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: resource-manager-binding
+subjects:
+  - kind: ServiceAccount
+    name: resource-manager
+---
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: resource-manager
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app.kubernetes.io/name: codespace-ingress
+  name: codespace-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - backend:
+              service:
+                name: sandbox-service
+                port:
+                  number: 80
+            path: /api/v1/sandbox
+            pathType: Prefix
+    - http:
+        paths:
+          - backend:
+              service:
+                name: ai-service
+                port:
+                  number: 80
+            path: /api/v1/ai-orchestration
+            pathType: Prefix
+    - host: '*.preview.localhost'
+      http:
+        paths:
+          - backend:
+              service:
+                name: router-service
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+    - host: '*.agent.localhost'
+      http:
+        paths:
+          - backend:
+              service:
+                name: router-service
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
